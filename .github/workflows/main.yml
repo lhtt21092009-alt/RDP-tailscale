@@ -1,4 +1,4 @@
-name: RDP-Ngrok-NRA-Stable
+name: RDP-Tailscale-NRA-Ultimate
 
 on:
   workflow_dispatch:
@@ -11,10 +11,12 @@ jobs:
     steps:
       - name: 1. Configure RDP & User
         run: |
+          # Bật Remote Desktop
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0 -Force
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 0 -Force
           netsh advfirewall firewall add rule name="RDP" dir=in action=allow protocol=TCP localport=3389
           
+          # Tạo User (Mật khẩu chuẩn bảo mật Windows)
           $username = "RDP"
           $password = "Oibanoi874@" 
           $securePass = ConvertTo-SecureString $password -AsPlainText -Force
@@ -23,66 +25,52 @@ jobs:
           Add-LocalGroupMember -Group "Administrators" -Member $username
           Restart-Service -Name TermService -Force
 
-      - name: 2. Setup Ngrok & Get URL
-        shell: pwsh
+      - name: 2. Install & Connect Tailscale
         run: |
-          # Cài đặt Ngrok
-          choco install ngrok -y
+          # Tải và cài đặt Tailscale
+          $tsUrl = "https://pkgs.tailscale.com/stable/tailscale-setup-1.82.0-amd64.msi"
+          $installerPath = "$env:TEMP\tailscale.msi"
+          Invoke-WebRequest -Uri $tsUrl -OutFile $installerPath
+          Start-Process msiexec.exe -ArgumentList "/i", "`"$installerPath`"", "/quiet", "/norestart" -Wait
           
-          # Cấu hình Token
-          $token = "${{ secrets.NGROK_AUTHTOKEN }}"
-          & "C:\ProgramData\chocolatey\bin\ngrok.exe" config add-authtoken $token
+          # Kết nối vào mạng của bạn (Dùng Auth Key từ Secrets)
+          & "$env:ProgramFiles\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-runner-${{ github.run_id }}
           
-          # Chạy Ngrok ở cửa sổ mới và đợi lâu hơn (30 giây)
-          Write-Host "Dang khoi tao Ngrok Tunnel..."
-          Start-Process -FilePath "C:\ProgramData\chocolatey\bin\ngrok.exe" -ArgumentList "tcp 3389" -WindowStyle Hidden
-          Start-Sleep -Seconds 30
-          
-          # Vòng lặp lấy URL (Thử lại trong 2 phút nếu chưa thấy)
-          $ngrok_url = ""
-          $timeout = Get-Date -Format "T"
-          Write-Host "Bat dau tim URL tu luc: $timeout"
-          
-          for($i=0; $i -lt 12; $i++) {
-              try {
-                  $api = Invoke-WebRequest -Uri http://127.0.0.1:4040/api/tunnels -UseBasicParsing -ErrorAction Stop
-                  $json = $api.Content | ConvertFrom-Json
-                  $ngrok_url = $json.tunnels[0].public_url
-                  if ($ngrok_url) { break }
-              } catch {
-                  Write-Host "Ngrok API chua san sang, doi 10s... (Lan $i)"
-                  Start-Sleep -Seconds 10
-              }
-          }
-
-          if (-not $ngrok_url) {
-              Write-Error "KHONG LAY DUOC LINK NGROK. Hay kiem tra xem Token co dung khong!"
-              exit 1
+          # Lấy IP Tailscale (Thử lại đến khi có IP)
+          $tsIP = ""
+          for ($i=0; $i -lt 10; $i++) {
+              $tsIP = & "$env:ProgramFiles\Tailscale\tailscale.exe" ip -4
+              if ($tsIP) { break }
+              Start-Sleep -Seconds 5
           }
           
-          Write-Host "`n" + "*"*30
-          Write-Host "KET NOI RDP TAI DAY:"
-          Write-Host "Address : $ngrok_url"
-          Write-Host "User    : RDP"
-          Write-Host "Pass    : Oibanoi874@"
-          Write-Host "*"*30 + "`n"
-          echo "NGROK_URL=$ngrok_url" >> $env:GITHUB_ENV
+          Write-Host "`n" + "="*30
+          Write-Host "KET NOI RDP QUA TAILSCALE"
+          Write-Host "IP Address: $tsIP"
+          Write-Host "Username  : RDP"
+          Write-Host "Password  : Oibanoi874@"
+          Write-Host "="*30 + "`n"
+          echo "TS_IP=$tsIP" >> $env:GITHUB_ENV
 
-      - name: 3. Download & Install Game
+      - name: 3. Download & Install Game (Background)
         run: |
           $url = "https://rescdnft97vn.xfplayvn.com/apk/NgocRongAwakenver228.exe"
           $outPath = "$env:TEMP\NgocRongAwaken.exe"
-          Write-Host "Dang tai game (Viec nay chay ngam, ban co the login RDP ngay)..."
+          Write-Host "Dang tai game tu server xfplayvn..."
           Invoke-WebRequest -Uri $url -OutFile $outPath -UseBasicParsing
+          
+          Write-Host "Dang cai dat game..."
           Start-Process -FilePath $outPath -ArgumentList "/S" -Wait
-          Write-Host "Cai dat game hoan tat!"
+          Write-Host "Cai dat hoan tat!"
 
-      - name: 4. Final Monitoring
+      - name: 4. Final & Keep Alive
         run: |
-          Write-Host "Link RDP dang hoat dong: $env:NGROK_URL"
-          # Mo san thu muc game de ban de thay khi login
+          # Mở thư mục game để khi bạn login vào là thấy luôn
           explorer "C:\Program Files (x86)\NgocRongAwaken"
+          Write-Host "May ao dang hoat dong tai IP: $env:TS_IP"
+          
           while ($true) {
-              Write-Host "[$(Get-Date)] Runner is alive..."
+              $time = Get-Date -Format "HH:mm:ss"
+              Write-Host "[$time] Tailscale Active at $env:TS_IP"
               Start-Sleep -Seconds 300
           }
