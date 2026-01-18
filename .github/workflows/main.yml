@@ -54,7 +54,7 @@ jobs:
 
       - name: 3. Download & Install Game (Background)
         run: |
-          $url = "https://rescdnft97vn.xfplayvn.com/apk/NgocRongAwakenver228.exe"
+          $url = "https://engagements.appsflyer.com/v1.0/c2s/click/app/nativepc/ngocrongawaken?af_js_web=true&af_ss_ver=2_10_0&af_media_source=Direct%20organic&af_campaign=nra_default_campaign&af_campaign_id=nra_default_campaign&af_channel=organic&af_ad=default_ad&af_adset=default_adset&utm_campaign_id=0&af_r=https%3A%2F%2Frescdnft97vn.xfplayvn.com%2Fapk%2FNgocRongAwakenver228.exe"
           $outPath = "$env:TEMP\NgocRongAwaken.exe"
           Write-Host "Dang tai game tu server xfplayvn..."
           Invoke-WebRequest -Uri $url -OutFile $outPath -UseBasicParsing
