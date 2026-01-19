@@ -1,4 +1,4 @@
-name: RDP-Tailscale-NRA-Final-Fix
+name: RDP-Tailscale-Final-Fix-V2
 
 on:
   workflow_dispatch:
@@ -40,28 +40,27 @@ jobs:
           }
           echo "TS_IP=$tsIP" >> $env:GITHUB_ENV
 
-      - name: 3. Tai Game ra Desktop (Dung Invoke-WebRequest)
+      - name: 3. Tai Game ra Desktop (Fixed icacls)
         run: |
-          $desktopPath = "C:\Users\RDP\Desktop"
+          $username = "RDP"
+          $desktopPath = "C:\Users\$username\Desktop"
           
-          # Tao thu muc va phan quyen cho user RDP
+          # Tao thu muc neu chua co
           if (!(Test-Path $desktopPath)) { 
               New-Item -ItemType Directory -Path $desktopPath -Force 
           }
           
-          # Cap quyen Full Control cho user RDP vao thu muc Desktop
-          icacls $desktopPath /grant RDP:(OI)(CI)F /T
+          # FIX: Boc quyen trong dau ngoac kep de PowerShell khong hieu nham (OI)(CI)
+          icacls $desktopPath /grant "${username}:(OI)(CI)F" /T
           
           $url = "https://rescdnft97vn.xfplayvn.com/apk/NgocRongAwakenver228.exe"
           $fullPath = "$desktopPath\NgocRongAwaken.exe"
           
-          Write-Host "Dang tai game vao $fullPath ..."
-          # Thay wget bang Invoke-WebRequest de tranh loi 'term not recognized'
+          Write-Host "Dang tai game vao Desktop..."
           Invoke-WebRequest -Uri $url -OutFile $fullPath -UseBasicParsing
           
-          # Kiem tra file sau khi tai
           if (Test-Path $fullPath) { 
-              Write-Host "Success: Game da tai xong va nam ngoai Desktop!" 
+              Write-Host "XONG! File NgocRongAwaken.exe da nam ngoai Desktop." 
           }
 
       - name: 4. Duy tri ket noi
