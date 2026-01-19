@@ -1,4 +1,4 @@
-name: RDP-Tailscale-NRA-Desktop
+name: RDP-Tailscale-NRA-Final-Fix
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ jobs:
     timeout-minutes: 3600
 
     steps:
-      - name: 1. Cau hinh Windows & User
+      - name: 1. Cau hinh RDP & User
         run: |
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0 -Force
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 0 -Force
@@ -23,11 +23,11 @@ jobs:
           Add-LocalGroupMember -Group "Administrators" -Member $username
           Restart-Service -Name TermService -Force
 
-      - name: 2. Cai dat & Ket noi Tailscale
+      - name: 2. Ket noi Tailscale
         run: |
           $tsUrl = "https://pkgs.tailscale.com/stable/tailscale-setup-1.82.0-amd64.msi"
           $installerPath = "$env:TEMP\tailscale.msi"
-          Invoke-WebRequest -Uri $tsUrl -OutFile $installerPath
+          Invoke-WebRequest -Uri $tsUrl -OutFile $installerPath -UseBasicParsing
           Start-Process msiexec.exe -ArgumentList "/i", "`"$installerPath`"", "/quiet", "/norestart" -Wait
           
           & "$env:ProgramFiles\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-game-runner
@@ -38,33 +38,37 @@ jobs:
               if ($tsIP) { break }
               Start-Sleep -Seconds 5
           }
-          
-          Write-Host "IP CUA BAN: $tsIP"
           echo "TS_IP=$tsIP" >> $env:GITHUB_ENV
 
-      - name: 3. Tai Game bang wget ra Desktop
+      - name: 3. Tai Game ra Desktop (Dung Invoke-WebRequest)
         run: |
-          # Duong dan den Desktop cua User RDP
           $desktopPath = "C:\Users\RDP\Desktop"
           
-          # Tao thu muc Desktop neu chua co (de phong)
-          if (!(Test-Path $desktopPath)) { New-Item -ItemType Directory -Path $desktopPath }
+          # Tao thu muc va phan quyen cho user RDP
+          if (!(Test-Path $desktopPath)) { 
+              New-Item -ItemType Directory -Path $desktopPath -Force 
+          }
+          
+          # Cap quyen Full Control cho user RDP vao thu muc Desktop
+          icacls $desktopPath /grant RDP:(OI)(CI)F /T
           
           $url = "https://rescdnft97vn.xfplayvn.com/apk/NgocRongAwakenver228.exe"
-          $fileName = "NgocRongAwaken.exe"
-          $fullPath = Join-Path $desktopPath $fileName
+          $fullPath = "$desktopPath\NgocRongAwaken.exe"
           
-          Write-Host "Dang tai game ra Desktop..."
-          # Su dung wget (alias cua Invoke-WebRequest trong PowerShell)
-          wget -Uri $url -OutFile $fullPath -UseBasicParsing
+          Write-Host "Dang tai game vao $fullPath ..."
+          # Thay wget bang Invoke-WebRequest de tranh loi 'term not recognized'
+          Invoke-WebRequest -Uri $url -OutFile $fullPath -UseBasicParsing
           
-          Write-Host "File da nam o: $fullPath"
+          # Kiem tra file sau khi tai
+          if (Test-Path $fullPath) { 
+              Write-Host "Success: Game da tai xong va nam ngoai Desktop!" 
+          }
 
-      - name: 4. Duy tri may ao
+      - name: 4. Duy tri ket noi
         run: |
-          Write-Host "Login RDP: $env:TS_IP | User: RDP | Pass: Oibanoi874@"
+          Write-Host "IP: $env:TS_IP | User: RDP | Pass: Oibanoi874@"
           while ($true) {
               $date = Get-Date -Format "HH:mm:ss"
-              Write-Host "[$date] Dang treo may..."
+              Write-Host "[$date] Runner online - IP: $env:TS_IP"
               Start-Sleep -Seconds 300
           }
