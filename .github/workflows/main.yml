@@ -1,4 +1,4 @@
-name: RDP-Tailscale-Pro-Gaming
+name: RDP-Tailscale-Chrome-Only
 
 on:
   workflow_dispatch:
@@ -40,40 +40,38 @@ jobs:
           }
           echo "TS_IP=$tsIP" >> $env:GITHUB_ENV
 
-      - name: 3. Tải Chrome & Game ra Desktop
+      - name: 3. Cài đặt Chrome ra Desktop
         run: |
           $desktopPath = "C:\Users\RDP\Desktop"
           if (!(Test-Path $desktopPath)) { New-Item -ItemType Directory -Path $desktopPath -Force }
+          
+          # Phân quyền chuẩn để không bị lỗi term 'OI'
           icacls $desktopPath /grant "RDP:(OI)(CI)F" /T
           
-          # Tải trình cài đặt Chrome
-          Write-Host "Dang tai Chrome..."
+          Write-Host "Dang tai bo cai Chrome..."
           $chromeUrl = "https://dl.google.com/chrome/install/375.126/chrome_installer.exe"
           Invoke-WebRequest -Uri $chromeUrl -OutFile "$desktopPath\Setup_Chrome.exe" -UseBasicParsing
           
-          # Tải file game Ngọc Rồng
-          Write-Host "Dang tai Game..."
-          $gameUrl = "https://rescdnft97vn.xfplayvn.com/apk/NgocRongAwakenver228.exe"
-          Invoke-WebRequest -Uri $gameUrl -OutFile "$desktopPath\NgocRongAwaken.exe" -UseBasicParsing
+          Write-Host "Chrome setup da co san ngoai Desktop."
 
-      - name: 4. HIỂN THỊ THÔNG TIN & DUY TRÌ
+      - name: 4. THÔNG TIN KẾT NỐI (HIỆN RÕ)
         run: |
-          Write-Host "`n" + "**********************************************"
-          Write-Host "   THONG TIN KET NOI RDP (THANH CONG 100%)"
-          Write-Host "**********************************************"
-          Write-Host " [!] DIA CHI IP : $env:TS_IP"
-          Write-Host " [!] TAI KHOAN  : RDP"
-          Write-Host " [!] MAT KHAU   : Oibanoi874@"
-          Write-Host "**********************************************"
-          Write-Host " Ghi chu: Hay mo Tailscale tren may ban truoc khi ket noi!"
-          Write-Host "**********************************************`n"
+          Write-Host "`n"
+          Write-Host "############################################################" -ForegroundColor Cyan
+          Write-Host "      THONG TIN DANG NHAP REMOTE DESKTOP (RDP)" -ForegroundColor Yellow
+          Write-Host "############################################################" -ForegroundColor Cyan
+          Write-Host " [>] IP ADDRESS : $env:TS_IP" -ForegroundColor Green
+          Write-Host " [>] USERNAME   : RDP" -ForegroundColor Green
+          Write-Host " [>] PASSWORD   : Oibanoi874@" -ForegroundColor Green
+          Write-Host "############################################################" -ForegroundColor Cyan
+          Write-Host " Huong dan: Mo Tailscale tren may ban truoc khi ket noi!"
+          Write-Host "############################################################`n"
           
-          # Tự động mở Chrome sẵn với link game khi bạn vào RDP
-          $gameUrl = "https://rescdnft97vn.xfplayvn.com/apk/NgocRongAwakenver228.exe"
-          Start-Process "https://www.google.com" # Mở trình duyệt sẵn cho bạn
+          # Mở trình duyệt mặc định sẵn
+          Start-Process "https://www.google.com" 
           
           while ($true) {
               $time = Get-Date -Format "HH:mm:ss"
-              Write-Host "[$time] May ao dang hoat dong tai: $env:TS_IP"
+              Write-Host "[$time] Runner dang online tai IP: $env:TS_IP"
               Start-Sleep -Seconds 300
           }
